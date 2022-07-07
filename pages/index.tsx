@@ -1,4 +1,4 @@
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useApolloClient, useMutation, useQuery } from "@apollo/client";
 import type { NextPage } from "next";
 import { FC } from "react";
 import styles from "../styles/Home.module.css";
@@ -25,12 +25,11 @@ const Location: FC<{
   id: string;
   name: string;
   overallRating: number;
-  refetch: () => void;
-}> = ({ id, name, overallRating, refetch }) => {
+}> = ({ id, name, overallRating }) => {
   const [rateMutation, { data, reset }] = useMutation(MUTATE_REVIEW);
+  const client = useApolloClient();
 
   const rateLocation = (rating: number) => () => {
-    reset();
     rateMutation({
       variables: {
         locationReview: {
@@ -39,7 +38,7 @@ const Location: FC<{
           rating: rating,
         },
       },
-    }).then(refetch);
+    });
   };
 
   return (
@@ -69,16 +68,27 @@ const Location: FC<{
 };
 
 const Home: NextPage = () => {
-  const { data, loading, refetch } = useQuery(GET_LOCATIONS, {});
+  const { data, loading } = useQuery(GET_LOCATIONS, {});
+  const client = useApolloClient();
+
+  const refetchLocations = () => {
+    client.refetchQueries({
+      include: "active",
+      onQueryUpdated(observableQuery, { result }) {
+        console.log(result);
+        return true;
+      },
+    });
+  };
 
   return (
     <div className={styles.container}>
       {loading && <p>Loading...</p>}
 
       {!loading &&
-        data.locations.map((i: any) => (
-          <Location key={i.id} refetch={refetch} {...i} />
-        ))}
+        data.locations.map((i: any) => <Location key={i.id} {...i} />)}
+
+      <button onClick={refetchLocations}>Refetch</button>
     </div>
   );
 };
